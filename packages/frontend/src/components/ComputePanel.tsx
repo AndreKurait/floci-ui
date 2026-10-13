@@ -9,7 +9,6 @@ import {
     Power,
     RefreshCw,
     RotateCcw,
-    Save,
     Terminal,
     Trash2,
     X,
@@ -30,7 +29,6 @@ import {
     startEc2Instance,
     stopEc2Instance,
     terminateEc2Instance,
-    updateEc2InstanceTags,
     type Ec2Image,
     type Ec2KeyPair,
     type Ec2SecurityGroup,
@@ -42,6 +40,7 @@ import {
 import { createCloudResource } from '@/api/cloudProxyClient'
 import type { CloudProvider } from '@/types/cloud'
 import type { CloudResource } from '@/types/resource'
+import { TagEditor } from '@/features/ec2/TagEditor'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -63,78 +62,6 @@ function stateClass(state?: string): string {
         case 'shutting-down': return 'error'
         default: return 'unknown'
     }
-}
-
-// ─── Tag editor (inline) ──────────────────────────────────────────────────────
-
-function InlineTagEditor({ instanceId, initialTags }: { instanceId: string; initialTags: Ec2Tag[] }) {
-    const qc = useQueryClient()
-    const [rows, setRows] = useState<Ec2Tag[]>(initialTags)
-    const [err, setErr] = useState('')
-
-    const mutation = useMutation({
-        mutationFn: ({ toAdd, toRemove }: { toAdd: Ec2Tag[]; toRemove: string[] }) =>
-            updateEc2InstanceTags(instanceId, toAdd, toRemove),
-        onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: ['ec2', 'instance', instanceId] })
-            void qc.invalidateQueries({ queryKey: ['ec2', 'instances'] })
-        },
-        onError: (e) => setErr(e instanceof Error ? e.message : 'Save failed'),
-    })
-
-    function addRow() { setRows((prev) => [...prev, { key: '', value: '' }]) }
-    function removeRow(idx: number) { setRows((prev) => prev.filter((_, i) => i !== idx)) }
-    function setKey(idx: number, key: string) { setRows((prev) => prev.map((r, i) => i === idx ? { ...r, key } : r)) }
-    function setValue(idx: number, value: string) { setRows((prev) => prev.map((r, i) => i === idx ? { ...r, value } : r)) }
-
-    function handleSave() {
-        const newTags = rows.filter((r) => r.key.trim())
-        const newKeys = new Set(newTags.map((t) => t.key))
-        const oldKeys = new Set(initialTags.map((t) => t.key))
-        const toAdd = newTags.filter((t) => !oldKeys.has(t.key) || initialTags.find((ot) => ot.key === t.key)?.value !== t.value)
-        const toRemove = initialTags.map((t) => t.key).filter((k) => !newKeys.has(k))
-        setErr('')
-        mutation.mutate({ toAdd, toRemove })
-    }
-
-    return (
-        <div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
-                {rows.map((tag, idx) => (
-                    <div key={idx} className="field-row" style={{ gap: 4 }}>
-                        <input
-                            className="input"
-                            placeholder="Key"
-                            value={tag.key}
-                            onChange={(e) => setKey(idx, e.target.value)}
-                            style={{ flex: 1 }}
-                        />
-                        <input
-                            className="input"
-                            placeholder="Value"
-                            value={tag.value}
-                            onChange={(e) => setValue(idx, e.target.value)}
-                            style={{ flex: 2 }}
-                        />
-                        <button className="icon-btn danger" onClick={() => removeRow(idx)} title="Remove">
-                            <Trash2 size={12} />
-                        </button>
-                    </div>
-                ))}
-            </div>
-            {err && <p style={{ fontSize: 11, color: 'var(--status-error)', margin: '0 0 6px' }}>{err}</p>}
-            <div style={{ display: 'flex', gap: 6 }}>
-                <button className="button compact" onClick={addRow}>
-                    <Plus size={12} />
-                    Add tag
-                </button>
-                <button className="button compact primary" onClick={handleSave} disabled={mutation.isPending}>
-                    {mutation.isPending ? <Loader2 size={12} /> : <Save size={12} />}
-                    Save tags
-                </button>
-            </div>
-        </div>
-    )
 }
 
 // ─── Create AMI modal (inline) ────────────────────────────────────────────────
@@ -576,7 +503,7 @@ function InstancePanel({ instanceId }: { instanceId: string }) {
                     )}
 
                     {tab === 'tags' && (
-                        <InlineTagEditor instanceId={instanceId} initialTags={inst.tags} />
+                        <TagEditor instanceId={instanceId} initialTags={inst.tags} />
                     )}
 
                     {tab === 'console' && (
