@@ -503,7 +503,7 @@ function InstancePanel({ instanceId }: { instanceId: string }) {
                     )}
 
                     {tab === 'tags' && (
-                        <TagEditor instanceId={instanceId} initialTags={inst.tags} />
+                        <TagEditor key={instanceId} instanceId={instanceId} initialTags={inst.tags} />
                     )}
 
                     {tab === 'console' && (

@@ -46,3 +46,30 @@ test.each(["aws:custom", "AWS:custom", "aWs:custom"])("rejects a new reserved ke
     instanceId: "i-test", toAdd: [{ key: "Name", value: "" }], toRemove: [],
   }, expect.anything());
 });
+test("keeps unsaved edits on refresh and does not delete externally added tags", async () => {
+  const { rerender } = render(<TagEditor instanceId="i-test" initialTags={[
+    { key: "aws:autoscaling:groupName", value: "group-a" },
+    { key: "Name", value: "before" },
+  ]} />);
+  const user = userEvent.setup();
+  await user.clear(screen.getByDisplayValue("before"));
+  await user.type(screen.getByPlaceholderText("Value"), "draft");
+  rerender(<TagEditor instanceId="i-test" initialTags={[
+    { key: "aws:autoscaling:groupName", value: "group-b" },
+    { key: "Name", value: "external" },
+    { key: "External", value: "keep" },
+  ]} />);
+  expect(screen.getByDisplayValue("draft")).toBeVisible();
+  expect(screen.getByDisplayValue("group-b")).toHaveAttribute("readonly");
+  await user.click(screen.getByRole("button", { name: "Save tags" }));
+  expect(mutate).toHaveBeenCalledWith({
+    instanceId: "i-test", toAdd: [{ key: "Name", value: "draft" }], toRemove: [],
+  }, expect.anything());
+});
+
+test("refreshes pristine rows without starting a draft", () => {
+  const { rerender } = render(<TagEditor instanceId="i-test" initialTags={[{ key: "Name", value: "before" }]} />);
+  rerender(<TagEditor instanceId="i-test" initialTags={[{ key: "Name", value: "after" }]} />);
+  expect(screen.getByDisplayValue("after")).toBeVisible();
+  expect(screen.queryByDisplayValue("before")).not.toBeInTheDocument();
+});
