@@ -79,6 +79,7 @@ export function TagEditor({ instanceId, initialTags }: Props) {
               className="input"
               placeholder="Key"
               value={tag.key}
+              disabled={mutation.isPending}
               onChange={(e) => setKey(idx, e.target.value)}
               style={{ flex: 1 }}
             />
@@ -86,10 +87,11 @@ export function TagEditor({ instanceId, initialTags }: Props) {
               className="input"
               placeholder="Value"
               value={tag.value}
+              disabled={mutation.isPending}
               onChange={(e) => setValue(idx, e.target.value)}
               style={{ flex: 2 }}
             />
-            <button className="icon-btn danger" onClick={() => removeRow(idx)} title="Remove">
+            <button className="icon-btn danger" onClick={() => removeRow(idx)} title="Remove" disabled={mutation.isPending}>
               <Trash2 size={12} />
             </button>
           </div>
@@ -99,7 +101,7 @@ export function TagEditor({ instanceId, initialTags }: Props) {
       {err && <p style={{ fontSize: 11, color: "var(--status-error)", margin: "0 0 6px" }}>{err}</p>}
 
       <div style={{ display: "flex", gap: 6 }}>
-        <button className="button compact" onClick={addRow}>
+        <button className="button compact" onClick={addRow} disabled={mutation.isPending}>
           <Plus size={12} />
           Add tag
         </button>

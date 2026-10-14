@@ -109,9 +109,11 @@ export function useUpdateEc2InstanceTagsMutation() {
   return useMutation({
     mutationFn: ({ instanceId, toAdd, toRemove }: { instanceId: string; toAdd: Ec2Tag[]; toRemove: string[] }) =>
       updateEc2InstanceTags(instanceId, toAdd, toRemove),
-    onSuccess: (_data, { instanceId }) => {
-      void qc.invalidateQueries({ queryKey: ec2QueryKeys.instance(instanceId) });
-      void qc.invalidateQueries({ queryKey: ec2QueryKeys.instances });
+    onSuccess: async (_data, { instanceId }) => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ec2QueryKeys.instance(instanceId) }),
+        qc.invalidateQueries({ queryKey: ec2QueryKeys.instances }),
+      ]);
     },
   });
 }
